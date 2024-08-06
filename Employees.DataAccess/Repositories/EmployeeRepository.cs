@@ -20,7 +20,7 @@ public class EmployeeRepository : IEmployeeRepository
             .ToListAsync();
 
         var employees = employeeEntities
-            .Select(e => Employee.Create(e.Id, e.FullName, e.Position, e.Salary).Employee)
+            .Select(e => Employee.Create(e.Id, e.FullName, e.Position).Employee)
             .ToList();
 
         return employees;
@@ -44,27 +44,23 @@ public class EmployeeRepository : IEmployeeRepository
 
     public async Task<Guid> Update(Guid id, string fullName, string position)
     {
-        var employee = await _context.Employees
-            .FirstOrDefaultAsync(e => e.Id == id);
-
-        if (employee == null) {
-            throw new InvalidOperationException("Employee not found!");
+        var employee = await _context.Employees.FindAsync(id);
+        if (employee == null)
+        {
+            throw new InvalidOperationException("Employee not found.");
         }
         
-        //Создаем новый экземпляр сотрудника с обновленными данными
-        var (updatedEmployee, error) = Employee.Create(id, fullName, position, employee.Salary);
-
-        if (string.IsNullOrEmpty(error)) {
+        var (updatedEmployee, error) = Employee.Create(id, fullName, position);
+        if (!string.IsNullOrEmpty(error))
+        {
             throw new InvalidOperationException(error);
         }
-
-        await _context.Employees
-            .Where(e => e.Id == id)
-            .ExecuteUpdateAsync(k => k
-                .SetProperty(e => e.FullName, updatedEmployee.FullName)
-                .SetProperty(e => e.Position, updatedEmployee.Position)
-                .SetProperty(e => e.Salary, updatedEmployee.Salary));
-
+        
+        employee.FullName = updatedEmployee.FullName;
+        employee.Position = updatedEmployee.Position;
+        employee.Salary = updatedEmployee.Salary;
+        
+        await _context.SaveChangesAsync();
         return id;
     }
 
